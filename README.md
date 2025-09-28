@@ -9,8 +9,6 @@ Authors: Luca Pennella, Pietro Saggese, Fabio Pinelli, Letterio Galletta
 
 The repository contains simulations of derivative contract dynamics in DeFi, as described in the paper. It focuses on:
 - Perpetual Futures
-- Everlasting Options
-- Synthetic Assets
 
 Simulations are based on Monte Carlo paths and track:
 - Position equity
