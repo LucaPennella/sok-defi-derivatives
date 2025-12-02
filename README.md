@@ -1,4 +1,4 @@
-# Systematizing DeFi Derivatives Protocols
+# Unified Framework and Comparative Study of Decentralized Finance Derivatives Protocols
 
 This repository accompanies the paper:
 
