@@ -2,8 +2,8 @@
 
 This repository accompanies the paper:
 
-**"Systematizing DeFi Derivatives Protocols: A Comparative Analysis and Conceptual Framework"**  
-Authors: Luca Pennella, Pietro Saggese, Fabio Pinelli, Letterio Galletta
+**"A Unified Framework and Comparative Study of Decentralized Finance Derivatives Protocols"**  
+
 
 ## Overview
 
