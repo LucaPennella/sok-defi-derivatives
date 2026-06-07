@@ -19,4 +19,3 @@ Simulations are based on Monte Carlo paths and track:
 ## Structure
 
 - `notebooks/Perpetuals_Sim.ipynb`: Jupyter notebook implementing simulations for perpetual contracts.
-- `figures/`: Outputs and plots from the simulations.
