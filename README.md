@@ -30,4 +30,4 @@ This structure clarifies which components belong to the derivative instrument, w
 
 ## Structure
 
-- `Perpetuals_Simulation-notebook.ipynb`: Jupyter notebook implementing Monte Carlo simulations for perpetual futures contracts.
+- `Perpetuals-Simulation-notebook.ipynb`: Jupyter notebook implementing Monte Carlo simulations for perpetual futures contracts.
