@@ -6,103 +6,293 @@ This repository accompanies the paper:
 
 ## Overview
 
-The repository contains simulations of derivative contract dynamics in DeFi, as described in the paper. It currently focuses on:
-
-- Perpetual futures
-
-The simulations are based on Monte Carlo price paths and track:
-
-- Position equity
-- Realized PnL (profit and loss)
-- Liquidation events
-- Funding costs
-- Trading fees
-
-## Mapping to the analytical framework
-
-The simulation code follows the analytical abstraction introduced in the paper. In particular, the perpetual futures simulation is organized around three levels:
-
-- `instrument_parameters`: position direction, collateral, leverage, maintenance margin, and position size;
-- `market_parameters`: price process, volatility, drift, time step, and simulation horizon;
-- `protocol_parameters`: trading fees, borrowing costs, funding-rate rule, liquidation rule, and slippage assumptions.
-
-This structure clarifies which components belong to the derivative instrument, which components describe the simulated market environment, and which components encode protocol-level mechanisms. It also defines the boundary between the abstract analytical framework introduced in the paper and the specific perpetual-futures instantiation implemented in the simulation code.
-
-## Structure
-
-- `Perpetuals-Simulation-notebook.ipynb`: Jupyter notebook implementing Monte Carlo simulations for perpetual futures contracts.
-
-
-## Mapping between the analytical tuple and the simulation code
-
-The simulation notebook operationalizes the tuple-based representation of perpetual futures introduced in the paper. In the analytical framework, a perpetual position is represented through three interacting components:
+The repository contains simulation code supporting the analytical framework developed in the paper. The paper systematizes DeFi derivatives protocols and represents derivative instruments through a common tripartite abstraction:
 
 \[
-(X^{perp},Y^{market},Z^{prot}),
+(X,Y^{market},Z^{prot}),
 \]
 
-where \(X^{perp}\) captures the instrument-level specification, \(Y^{market}\) captures the relevant market-state variables, and \(Z^{prot}\) captures the protocol-level mechanisms governing fees, funding, margining, and liquidation.
+where \(X\) denotes the instrument-level specification, \(Y^{market}\) denotes the relevant market-state variables, and \(Z^{prot}\) denotes the protocol-level mechanisms.
 
-For perpetual futures, the paper defines:
+The simulation code focuses on perpetual futures and implements a controlled, executable instantiation of the perpetual tuple introduced in the paper. The goal is not to emulate every implementation detail of existing protocols, but to translate the analytical representation into reproducible numerical experiments.
+
+The simulations track:
+
+- underlying price paths;
+- unrealized profit and loss;
+- account equity;
+- margin ratios;
+- trading, borrowing, slippage, and funding costs;
+- liquidation events;
+- realized PnL at the end of the simulation horizon.
+
+## Repository structure
+
+- `Perpetuals-Simulation-Notebook.ipynb`: main notebook implementing the perpetual futures simulations, batch experiments, sensitivity analysis, heatmaps, and tornado diagrams.
+- `README.md`: repository documentation.
+
+Depending on the final release, additional files may include exported figures, tables, or protocol-specific parameter configurations.
+
+## Analytical representation
+
+In the paper, a perpetual futures position is represented as:
+
+\[
+(X^{perp},Y^{market},Z^{prot}).
+\]
+
+The instrument-level component is:
 
 \[
 X^{perp}=\langle U,C,L,S,P_e\rangle,
 \]
 
-where \(U\) is the underlying asset, \(C\) is the collateral posted by the trader, \(L\) is leverage, \(S \in \{+1,-1\}\) is the position direction, and \(P_e\) is the entry price.
+where:
 
-The market state is represented as:
+- \(U\) is the underlying asset;
+- \(C\) is the collateral posted by the trader;
+- \(L\) is leverage;
+- \(S \in \{+1,-1\}\) is the position direction, long or short;
+- \(P_e\) is the entry price.
+
+The market-state component is:
 
 \[
 Y^{market}=\langle P_{index},P_{mark}\rangle,
 \]
 
-where \(P_{index}\) is the external reference price and \(P_{mark}\) is the protocol-internal price used for valuation, margining, and liquidation.
+where:
 
-The protocol-level component is represented as:
+- \(P_{index}\) is the external reference price;
+- \(P_{mark}\) is the protocol-internal mark price used for valuation, margining, and liquidation.
+
+The protocol-level component is:
 
 \[
 Z^{prot}=\langle F,\tau^{tr},m_i,m_m\rangle,
 \]
 
-where \(F\) denotes the funding mechanism, \(\tau^{tr}\) the trading fee rate, \(m_i\) the initial margin requirement, and \(m_m\) the maintenance margin threshold.
+where:
 
-The notebook implements a restricted but explicit version of this representation. The goal is not to reproduce the full heterogeneity of all perpetual protocols, but to make the analytical abstraction executable under controlled assumptions.
+- \(F\) is the funding mechanism;
+- \(\tau^{tr}\) is the trading fee rate;
+- \(m_i\) is the initial margin requirement;
+- \(m_m\) is the maintenance margin threshold.
+
+## Mapping between the analytical tuple and the simulation code
+
+The notebook implements a restricted but explicit version of the perpetual tuple. The following table summarizes the mapping between the formal objects in the paper and their computational counterparts.
 
 | Analytical object | Meaning in the paper | Code implementation | Notes |
 |---|---|---|---|
-| \(U\) | Underlying asset of the perpetual position | Implicitly represented by the simulated price path generated by `generate_price_path()` | The asset identity is not modeled symbolically; the code simulates the price process of a representative underlying asset. |
+| \(U\) | Underlying asset of the perpetual position | Simulated price path generated by `generate_price_path()` | The asset identity is not modeled symbolically; the code simulates a representative underlying asset. |
 | \(C\) | Collateral posted by the trader | `PerpParams.collateral` | Determines the initial capital buffer of the position. |
-| \(L\) | Leverage chosen by the trader | `PerpParams.leverage` | Used to compute initial notional exposure as \(N_0=L\cdot C\). |
-| \(S\) | Position direction, long or short | `PerpParams.is_long` | `True` corresponds to a long position; `False` corresponds to a short position. Internally this is converted into the sign of the position size \(q\). |
-| \(P_e\) | Entry price | `S[0]` inside `simulate_perp_single()` | The entry price is taken as the first value of the simulated price path. |
-| \(P_{index}\) | External reference price | Approximated by the generated GBM price path | The notebook does not model multiple external venues or oracle aggregation. |
-| \(P_{mark}\) | Mark price used for PnL, margining, and liquidation | Also approximated by the generated GBM price path | In the current implementation, \(P_{index}\) and \(P_{mark}\) are collapsed into one price process. This is a simplifying assumption. |
-| \(F\) | Funding mechanism | `apply_funding_fee`, `funding_kappa`, `funding_ema_span` | The funding mechanism is implemented through a stylized EMA-based premium proxy. |
+| \(L\) | Leverage chosen by the trader | `PerpParams.leverage` | Used to compute the initial notional exposure as \(N_0=L\cdot C\). |
+| \(S\) | Position direction, long or short | `PerpParams.is_long` | `True` corresponds to a long position; `False` corresponds to a short position. |
+| \(P_e\) | Entry price | First simulated price, usually `S[0]` inside `simulate_perp_single()` | The entry price is taken as the first value of the simulated price path. |
+| \(P_{index}\) | External reference price | Approximated by the simulated GBM price path | The notebook does not model multiple venues, oracle aggregation, or manipulation-resistant reference-price construction. |
+| \(P_{mark}\) | Mark price used for PnL, margining, and liquidation | Approximated by the same simulated GBM price path | In the current implementation, \(P_{index}\) and \(P_{mark}\) are collapsed into a single price process. |
+| \(F\) | Funding mechanism | `apply_funding_fee`, `funding_kappa`, `funding_ema_span` | Funding is represented through a stylized premium-based mechanism rather than through a full protocol-specific formula. |
 | \(\tau^{tr}\) | Trading fee rate | `PerpParams.trading_fee_rate` | Applied to notional exposure at opening and closing. |
-| \(m_i\) | Initial margin requirement | Implicitly enforced by the choice of leverage and collateral | The notebook assumes that the position is valid at opening once collateral and leverage are specified. |
+| \(m_i\) | Initial margin requirement | Implicitly captured by the selected collateral and leverage | The code assumes that the position is valid at opening once collateral and leverage are specified. |
 | \(m_m\) | Maintenance margin threshold | `PerpParams.maintenance_margin_rate` | Liquidation occurs when the margin ratio falls below this threshold. |
-| Borrowing costs | Protocol-level ongoing cost | `PerpParams.borrow_fee_rate` | This extends the compact tuple by adding a protocol-specific cost channel commonly observed in pool-based perpetual protocols. |
-| Slippage / price impact | Execution-related protocol cost | `slippage_bps_open`, `slippage_bps_close` | Included as optional one-off costs at opening and closing. |
+| Borrowing costs | Ongoing protocol cost | `PerpParams.borrow_fee_rate` | Included as an additional protocol-specific cost channel, especially relevant for pool-based perpetual protocols. |
+| Slippage / price impact | Execution-related cost | `slippage_bps_open`, `slippage_bps_close` | Included as optional one-off costs at opening and closing. |
 
-### Position dynamics in the code
+## Position dynamics implemented in the notebook
 
-The simulation follows the same economic logic as the analytical representation. At position opening, the code computes the initial notional exposure:
+The simulation follows the same economic logic as the analytical representation.
+
+At position opening, the code computes the initial notional exposure:
 
 \[
-N_0=L\cdot C,
+N_0=L\cdot C.
 \]
 
-and the signed position size:
+It then computes the signed position size:
 
 \[
 q=S\cdot \frac{N_0}{P_e}.
 \]
 
-In the notebook, this is implemented as:
+In the notebook, this logic corresponds to:
 
 ```python
 notional = perp.leverage * perp.collateral
 q = (notional / S0) * (1.0 if perp.is_long else -1.0)
+```
+
+At each time step, the position is marked to market using the simulated price path. Unrealized PnL is computed as:
+
+\[
+uPnL(t)=q(P_t-P_e).
+\]
+
+In the notebook, this corresponds to:
+
+```python
+upnl[i] = q * (price_now - S0)
+```
+
+Account equity evolves as collateral plus unrealized PnL minus cumulative protocol costs:
+
+\[
+E(t)=C+uPnL(t)-Fees(t),
+\]
+
+where cumulative fees include opening fees, borrowing fees, funding payments, and closing fees when applicable. In the notebook, this logic is implemented as:
+
+```python
+total_fees = fees_open + cum_borrow_fee + cum_funding_fee
+equity[i] = perp.collateral + upnl[i] - total_fees
+```
+
+The current notional exposure is:
+
+\[
+N(t)=|q|P_t.
+\]
+
+The margin ratio is then computed as:
+
+\[
+MR(t)=\frac{E(t)}{N(t)}.
+\]
+
+In the notebook:
+
+```python
+notional_now = abs(q) * price_now
+mr = equity[i] / max(notional_now, 1e-12)
+```
+
+Liquidation is triggered when:
+
+\[
+MR(t)\leq m_m.
+\]
+
+This corresponds to:
+
+```python
+if (not liquidated) and (mr <= perp.maintenance_margin_rate):
+    liquidated = True
+```
+
+Therefore, the code implements the core lifecycle described in the paper: position opening, mark-to-market valuation, fee and funding accumulation, margin monitoring, liquidation, and final PnL computation.
+
+## Simulation workflow
+
+The perpetual simulation pipeline contains three main layers.
+
+### 1. Single-path simulation
+
+A single simulation run generates one stochastic price path and tracks the evolution of one perpetual position over the selected horizon. For each time step, the code updates:
+
+- price;
+- unrealized PnL;
+- cumulative fees;
+- account equity;
+- current notional exposure;
+- margin ratio;
+- liquidation status.
+
+This layer is useful for inspecting the pathwise mechanics of a position.
+
+### 2. Batch simulation
+
+Batch simulations repeat the single-path procedure across many Monte Carlo runs. This makes it possible to estimate distributional outcomes such as:
+
+- average or median realized PnL;
+- liquidation probability;
+- dispersion of final outcomes;
+- sensitivity of risk metrics across scenarios.
+
+### 3. Sensitivity analysis
+
+The notebook includes sensitivity analyses over key market and protocol parameters. In particular, it studies how liquidation probability and realized PnL vary with:
+
+- leverage;
+- volatility;
+- trading fees;
+- funding parameters;
+- borrowing costs;
+- maintenance margin requirements.
+
+The heatmaps evaluate the joint effect of leverage and volatility, while the tornado diagram ranks the local impact of individual parameters around a baseline configuration.
+
+## Scope and validation boundary
+
+The notebook should be interpreted as an executable instantiation of the analytical framework, not as a full protocol emulator.
+
+First, the current implementation collapses \(P_{index}\) and \(P_{mark}\) into a single simulated price process. This means that the notebook does not model oracle aggregation, mark-index divergence, oracle latency, or manipulation-resistant price construction.
+
+Second, the funding mechanism \(F\) is represented in stylized form. The implementation captures the general idea that funding affects equity over time, but it does not reproduce the exact funding formulas of specific protocols such as dYdX, Drift, GMX, or Hyperliquid.
+
+Third, the initial margin requirement \(m_i\) is not explicitly checked as a separate constraint. Instead, the initial feasibility of the position is implicitly determined by the selected collateral and leverage configuration. The maintenance margin \(m_m\), by contrast, is explicitly implemented through the liquidation rule.
+
+Fourth, the code includes borrowing costs and slippage parameters. These are not separate elements in the compact tuple \(Z^{prot}=\langle F,\tau^{tr},m_i,m_m\rangle\), but they can be interpreted as protocol-specific extensions of the generalized protocol-cost structure.
+
+Fifth, the notebook focuses on position-level outcomes. It does not model strategic behavior by traders, liquidity-provider losses, order-book depth, endogenous liquidity, oracle manipulation, liquidation auctions, or cross-margin portfolio effects.
+
+These simplifications define the validation boundary of the simulations. The code does not validate the full taxonomy and does not claim to reproduce the complete behavior of any specific protocol. Rather, it makes the analytical representation executable for a controlled perpetual-futures setting.
+
+## Interpretation of the results
+
+The simulations are designed to illustrate how market and protocol parameters affect the evolution of a perpetual position. The results should be interpreted as controlled numerical experiments rather than as empirical estimates of real protocol performance.
+
+In particular:
+
+- higher leverage increases notional exposure relative to collateral and compresses the margin buffer;
+- higher volatility increases the probability that adverse price movements push the position below the maintenance margin threshold;
+- trading fees, borrowing costs, and funding payments reduce equity over time;
+- maintenance margin requirements determine the liquidation boundary;
+- the relative importance of each parameter depends on the baseline configuration and the simulation horizon.
+
+The tornado analysis is local by construction. It measures the effect of parameter shocks around a specific baseline configuration and over a fixed time horizon. Therefore, a small local effect in the tornado diagram should not be interpreted as evidence that the corresponding mechanism is economically irrelevant in general. For example, funding and borrowing costs may become more important over longer horizons or under alternative protocol calibrations.
+
+## Reproducibility
+
+The notebook is intended to be reproducible and extensible. Users can modify:
+
+- price-process assumptions;
+- leverage levels;
+- volatility values;
+- collateral amounts;
+- fee rates;
+- funding parameters;
+- borrowing costs;
+- maintenance margin thresholds;
+- simulation horizons;
+- number of Monte Carlo runs.
+
+To reproduce the main experiments, open the notebook and execute the cells sequentially.
+
+## Extensions
+
+The current implementation can be extended in several directions:
+
+- separate \(P_{index}\) and \(P_{mark}\) into two distinct processes;
+- implement protocol-specific funding formulas;
+- add explicit initial-margin validation;
+- include oracle delays or mark-price deviations;
+- model partial liquidations;
+- include liquidity-provider accounting;
+- add order-book or pool-depth effects;
+- extend the simulation to everlasting options and synthetic assets;
+- calibrate parameters using on-chain or protocol-level data.
+
+These extensions would allow the repository to move from a stylized executable abstraction toward richer protocol-specific simulations.
+
+## Citation
+
+If you use this repository, please cite the accompanying paper:
+
+```bibtex
+@article{defi_derivatives_framework,
+  title   = {A Unified Framework and Comparative Study of Decentralized Finance Derivatives Protocols},
+  author  = {...},
+  year    = {...}
+}
 ```
 
